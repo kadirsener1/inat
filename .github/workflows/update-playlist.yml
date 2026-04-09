@@ -1,119 +1,64 @@
-name: IPTV Auto-Updater v3.0
+name: 🔄 Update iNat TV Playlist
 
 on:
   schedule:
-    - cron: "0 3,9,15,21 * * *"   # Her 6 saatte bir (UTC: 03,09,15,21)
-  workflow_dispatch:
+    # Her gün saat 06:00 ve 18:00 UTC'de çalışır
+    - cron: '0 6,18 * * *'
+  workflow_dispatch:    # Manuel tetikleme
     inputs:
       channel:
-        description: "Tek kanal test (boş bırak = tümü)"
+        description: 'Tek kanal adı (boş bırakırsan hepsi güncellenir)'
         required: false
-        default: ""
-      source:
-        description: "Kaynak filtrele: 8602741 | tecostream | inattv"
-        required: false
-        default: ""
-      dry_run:
-        description: "Dry run (dosyaya yazma)"
-        required: false
-        default: "false"
-        type: choice
-        options: ["false", "true"]
-
-permissions:
-  contents: write
+        default: ''
 
 jobs:
-  update:
+  update-playlist:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
     steps:
-      - name: Checkout
+      - name: 📥 Repoyu çek
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Python 3.11 kur
+      - name: 🐍 Python 3.12 kur
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-          cache: "pip"
+          python-version: '3.12'
+          cache: 'pip'
 
-      - name: Bağımlılıkları yükle
+      - name: 🌐 Chrome + ChromeDriver kur
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+
+      - name: 📦 Bağımlılıkları yükle
         run: |
+          pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: State dosyasını önbellekten yükle
-        uses: actions/cache@v4
-        with:
-          path: state.json
-          key: iptv-state-${{ github.run_number }}
-          restore-keys: |
-            iptv-state-
-
-      - name: Playlist güncelle
+      - name: 🚀 Playlist'i güncelle
         run: |
-          ARGS=""
-
           if [ -n "${{ github.event.inputs.channel }}" ]; then
-            ARGS="$ARGS --channel \"${{ github.event.inputs.channel }}\""
+            python main.py --channel "${{ github.event.inputs.channel }}"
+          else
+            python main.py
           fi
+        env:
+          PYTHONUNBUFFERED: '1'
 
-          if [ -n "${{ github.event.inputs.source }}" ]; then
-            ARGS="$ARGS --source \"${{ github.event.inputs.source }}\""
-          fi
-
-          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
-            ARGS="$ARGS --dry-run"
-          fi
-
-          eval python main.py $ARGS
-
-      - name: Değişiklikleri kontrol et
-        id: check_changes
+      - name: 📤 Değişiklikleri commit et ve push et
         run: |
-         git add -A
-if git diff --cached --quiet; then
-  echo "changed=false" >> $GITHUB_OUTPUT
-else
-  echo "changed=true" >> $GITHUB_OUTPUT
-fi
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add playlist.m3u update.log
+          if git diff --staged --quiet; then
+            echo "Değişiklik yok, commit atlanıyor."
+          else
+            TIMESTAMP=$(date -u '+%Y-%m-%d %H:%M UTC')
+            git commit -m "🔄 Playlist güncellendi: $TIMESTAMP"
+            git push
+          fi
 
-      - name: Commit & Push
-        if: steps.check_changes.outputs.changed == 'true' && github.event.inputs.dry_run != 'true'
-        run: |
-          git config user.name  "IPTV Bot"
-          git config user.email "bot@github-actions"
-
-          # Değişen dosyaları göster
-          git diff --stat playlist.m3u state.json
-
-          git add playlist.m3u state.json updater.log
-
-          DOMAIN=$(python -c "import json; d=json.load(open('state.json')); print(d.get('domain_8602741','?'))" 2>/dev/null || echo "?")
-          TIMESTAMP=$(date -u "+%Y-%m-%d %H:%M UTC")
-
-          git commit -m "🔄 Auto: playlist güncellendi — $TIMESTAMP [domain: $DOMAIN]"
-          git push
-
-      - name: Değişiklik yoksa bildir
-        if: steps.check_changes.outputs.changed == 'false'
-        run: echo "✅ Değişiklik yok, commit atlanıyor."
-
-      - name: Özet
+      - name: 📋 Güncelleme logunu göster
         if: always()
-        run: |
-          echo "## IPTV Updater Özeti" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          if [ -f state.json ]; then
-            DOMAIN=$(python -c "import json; d=json.load(open('state.json')); print(d.get('domain_8602741','?'))" 2>/dev/null || echo "?")
-            echo "- **Aktif Domain:** \`$DOMAIN\`" >> $GITHUB_STEP_SUMMARY
-          fi
-          if [ -f playlist.m3u ]; then
-            COUNT=$(grep -c "^#EXTINF" playlist.m3u || echo "0")
-            echo "- **Toplam Kanal:** $COUNT" >> $GITHUB_STEP_SUMMARY
-          fi
-          echo "- **Zaman:** $(date -u '+%Y-%m-%d %H:%M UTC')" >> $GITHUB_STEP_SUMMARY
-          echo "- **Değişiklik:** ${{ steps.check_changes.outputs.changed }}" >> $GITHUB_STEP_SUMMARY
+        run: cat update.log 2>/dev/null || echo "Log bulunamadı"
