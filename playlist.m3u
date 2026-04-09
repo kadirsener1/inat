@@ -3,20 +3,36 @@
 # Aktif Domain: 8602741.xyz
 # Kaynak: https://8602741.xyz/event.html?id=
 
-#EXTINF:-1 tvg-id="bein-sports-1.tr" tvg-name="beIN Sports 1" tvg-logo="https://i.imgur.com/mKwIqtf.png" group-title="Spor",BeIN Sports 1 HD
-#SOURCE:8602741.xyz
-https://andro.evrenosoglu53.lat/checklist/receptestt.m3u8
-
+#EXTINF:-1 tvg-id="bein-sports-1.tr" group-title="Spor",BeIN Sports 1 (inattv1289)
+#SOURCE:inattv1289.xyz
+https://example.inattv1289.xyz/live/stream.m3u8
 #EXTINF:-1 tvg-id="bein-sports-2.tr" tvg-name="beIN Sports 2" tvg-logo="https://i.imgur.com/tGDsQaE.png" group-title="Spor",BeIN Sports 2 HD
 #SOURCE:8602741.xyz
 https://andro.evrenosoglu53.lat/checklist/androstreamlivebs2.m3u8
-
 #EXTINF:-1 tvg-id="bein-sports-3.tr" tvg-name="beIN Sports 3" tvg-logo="https://i.imgur.com/tGDsQaE.png" group-title="Spor",BeIN Sports 3 HD
 #SOURCE:8602741.xyz
 
 # ... diğer kanallar ...
 
 # ↓↓ BAŞKA KAYNAKTAN EKLENEN — DOKUNULMAZ ↓↓
-#EXTINF:-1 tvg-id="bein-sports-1.tr" group-title="Spor",BeIN Sports 1 (inattv1289)
-#SOURCE:inattv1289.xyz
-https://example.inattv1289.xyz/live/stream.m3u8
+#EXTINF:-1 tvg-id="androstreamlivebs1" tvg-name="BeIN Sports 1 HD" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/Bein_sports_1.png/220px-Bein_sports_1.png" group-title="Spor",BeIN Sports 1 HD
+#SOURCE:8602741.xyz
+https://andro.evrenosoglu53.lat/checklist/receptestt.m3u8
+#EXTINF:-1 tvg-id="androstreamlivebs2" tvg-name="BeIN Sports 2 HD" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/Bein_sports_2.png/220px-Bein_sports_2.png" group-title="Spor",BeIN Sports 2 HD
+#SOURCE:8602741.xyz
+https://andro.evrenosoglu53.lat/checklist/facebooklivebs2.m3u8
+#EXTINF:-1 tvg-id="androstreamlivebs3" tvg-name="BeIN Sports 3 HD" tvg-logo="" group-title="Spor",BeIN Sports 3 HD
+#SOURCE:8602741.xyz
+https://andro.evrenosoglu53.lat/checklist/facebooklivebs3.m3u8
+#EXTINF:-1 tvg-id="androstreamlivebs4" tvg-name="BeIN Sports 4 HD" tvg-logo="" group-title="Spor",BeIN Sports 4 HD
+#SOURCE:8602741.xyz
+https://andro.evrenosoglu53.lat/checklist/facebooklivebs4.m3u8
+#EXTINF:-1 tvg-id="androstreamlivegs" tvg-name="GS TV" tvg-logo="" group-title="Spor",GS TV
+#SOURCE:8602741.xyz
+https://andro.evrenosoglu53.lat/checklist/facebooklivegs.m3u8
+#EXTINF:-1 tvg-id="androstreamlivefb" tvg-name="FB TV" tvg-logo="" group-title="Spor",FB TV
+#SOURCE:8602741.xyz
+https://andro.evrenosoglu53.lat/checklist/facebooklivefb.m3u8
+#EXTINF:-1 tvg-id="androstreamlivenba" tvg-name="NBA TV" tvg-logo="" group-title="Spor",NBA TV
+#SOURCE:8602741.xyz
+https://andro.evrenosoglu53.lat/checklist/facebooklivenba.m3u8
