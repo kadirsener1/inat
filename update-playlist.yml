@@ -1,0 +1,64 @@
+name: 🔄 Update iNat TV Playlist
+
+on:
+  schedule:
+    # Her gün saat 06:00 ve 18:00 UTC'de çalışır
+    - cron: '0 6,18 * * *'
+  workflow_dispatch:    # Manuel tetikleme
+    inputs:
+      channel:
+        description: 'Tek kanal adı (boş bırakırsan hepsi güncellenir)'
+        required: false
+        default: ''
+
+jobs:
+  update-playlist:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: 📥 Repoyu çek
+        uses: actions/checkout@v4
+
+      - name: 🐍 Python 3.12 kur
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: 🌐 Chrome + ChromeDriver kur
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+
+      - name: 📦 Bağımlılıkları yükle
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: 🚀 Playlist'i güncelle
+        run: |
+          if [ -n "${{ github.event.inputs.channel }}" ]; then
+            python main.py --channel "${{ github.event.inputs.channel }}"
+          else
+            python main.py
+          fi
+        env:
+          PYTHONUNBUFFERED: '1'
+
+      - name: 📤 Değişiklikleri commit et ve push et
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add playlist.m3u update.log
+          if git diff --staged --quiet; then
+            echo "Değişiklik yok, commit atlanıyor."
+          else
+            TIMESTAMP=$(date -u '+%Y-%m-%d %H:%M UTC')
+            git commit -m "🔄 Playlist güncellendi: $TIMESTAMP"
+            git push
+          fi
+
+      - name: 📋 Güncelleme logunu göster
+        if: always()
+        run: cat update.log 2>/dev/null || echo "Log bulunamadı"
