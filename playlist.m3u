@@ -1,18 +1,19 @@
-#EXTM3U x-tvg-url="" url-tvg="https://www.epgshares.com/epg_tr.xml.gz"
-# Son güncelleme: 2026-01-15 06:12 UTC
+#EXTM3U x-tvg-url="https://epg.pw/xmltv.xml.gz"
+# Güncellenme: 2025-01-15 06:00 UTC
+# Aktif Domain: 8602741.xyz
+# Kaynak: https://8602741.xyz/event.html?id=
 
-#EXTINF:-1 tvg-id="bein-sports-1-izle" tvg-name="BeIN Sports 1" group-title="Sports",BeIN Sports 1
+#EXTINF:-1 tvg-id="bein-sports-1.tr" tvg-name="beIN Sports 1" tvg-logo="https://i.imgur.com/mKwIqtf.png" group-title="Spor",BeIN Sports 1 HD
+#SOURCE:8602741.xyz
+https://andro.evrenosoglu53.lat/checklist/receptestt.m3u8
+
+#EXTINF:-1 tvg-id="bein-sports-2.tr" tvg-name="beIN Sports 2" tvg-logo="https://i.imgur.com/tGDsQaE.png" group-title="Spor",BeIN Sports 2 HD
+#SOURCE:8602741.xyz
+https://andro.evrenosoglu53.lat/checklist/androstreamlivebs2.m3u8
+
+# ... diğer kanallar ...
+
+# ↓↓ BAŞKA KAYNAKTAN EKLENEN — DOKUNULMAZ ↓↓
+#EXTINF:-1 tvg-id="bein-sports-1.tr" group-title="Spor",BeIN Sports 1 (inattv1289)
 #SOURCE:inattv1289.xyz
-https://example.com/bein1/stream.m3u8
-
-#EXTINF:-1 tvg-id="bein-sports-2-izle" tvg-name="BeIN Sports 2" group-title="Sports",BeIN Sports 2
-#SOURCE:inattv1289.xyz
-https://example.com/bein2/stream.m3u8
-
-# ↓ Başka kaynaktan eklenen kanal — ASLA değiştirilmez
-#EXTINF:-1 tvg-name="Özel Kanal" group-title="Custom",Özel Kanal
-https://my-own-server.com/live.m3u8
-
-#EXTINF:-1 tvg-id="trt-spor-izle" tvg-name="TRT Spor" group-title="Sports",TRT Spor
-#SOURCE:inattv1289.xyz
-https://example.com/trtspor/stream.m3u8ğ
+https://example.inattv1289.xyz/live/stream.m3u8
