@@ -26,7 +26,7 @@ BASE_URL = "https://inattv1289.xyz"
 SOURCE_TAG = "#SOURCE:inattv1289.xyz"  # M3U dosyasındaki kaynak etiketi
 
 CHANNEL_SLUGS = [
-    ("BeIN Sports 1",     "bein-sports-1-izle",  "Sports"),
+    ("androstreamlivebs1",     "bein-sports-1-izle",  "Sports"),
     ("BeIN Sports 2",     "bein-sports-2-izle",  "Sports"),
     ("BeIN Sports 3",     "bein-sports-3-izle",  "Sports"),
     ("BeIN Sports 4",     "bein-sports-4-izle",  "Sports"),
