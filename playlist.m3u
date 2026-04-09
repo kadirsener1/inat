@@ -1,0 +1,18 @@
+#EXTM3U x-tvg-url="" url-tvg="https://www.epgshares.com/epg_tr.xml.gz"
+# Son güncelleme: 2026-01-15 06:12 UTC
+
+#EXTINF:-1 tvg-id="bein-sports-1-izle" tvg-name="BeIN Sports 1" group-title="Sports",BeIN Sports 1
+#SOURCE:inattv1289.xyz
+https://example.com/bein1/stream.m3u8
+
+#EXTINF:-1 tvg-id="bein-sports-2-izle" tvg-name="BeIN Sports 2" group-title="Sports",BeIN Sports 2
+#SOURCE:inattv1289.xyz
+https://example.com/bein2/stream.m3u8
+
+# ↓ Başka kaynaktan eklenen kanal — ASLA değiştirilmez
+#EXTINF:-1 tvg-name="Özel Kanal" group-title="Custom",Özel Kanal
+https://my-own-server.com/live.m3u8
+
+#EXTINF:-1 tvg-id="trt-spor-izle" tvg-name="TRT Spor" group-title="Sports",TRT Spor
+#SOURCE:inattv1289.xyz
+https://example.com/trtspor/stream.m3u8ğ
