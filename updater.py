@@ -1,219 +1,197 @@
 #!/usr/bin/env python3
-"""
-updater.py — M3U dosyasını akıllıca güncelleyen modül
+# updater.py — v3.0
+# Sadece SOURCE etiketli girişleri günceller, diğerlerine dokunmaz
 
-Kurallar:
-  ✅ #SOURCE:8602741.xyz etiketli girişleri günceller
-  ✅ Link değiştiyse → yeni linki yazar
-  ✅ Link aynıysa    → hiç dokunmaz
-  ✅ Yeni kanal varsa → ekler
-  ❌ Başka kaynaklı kanalları (inattv1289, netspor...) kesinlikle değiştirmez
-  ❌ El ile eklenen kanalları silmez
-"""
-
-import re, json, logging
+import re
+import logging
+from datetime import datetime
 from pathlib import Path
-from datetime import datetime, timezone
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, Optional
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
-log = logging.getLogger("Updater")
+logger = logging.getLogger(__name__)
 
-SOURCE_TAG      = "8602741.xyz"
-SOURCE_MARKER   = f"#SOURCE:{SOURCE_TAG}"
-CHANNELS_FILE   = Path("channels.json")
-STATE_FILE      = Path("state.json")
+M3U_FILE = Path("playlist.m3u")
 
-EPG_URL = "https://epg.pw/xmltv.xml.gz"
-EPG_BACKUP = "http://195.154.221.171/epg/guidecombo.xml"
+SOURCES = {
+    "8602741":   "#SOURCE:8602741.xyz",
+    "tecostream": "#SOURCE:netspor.tecostream.xyz",
+    "inattv":    "#SOURCE:inattv1289.xyz",
+}
+
+M3U_HEADER = """\
+#EXTM3U url-epg="http://epg.streamstv.me/epg/guide-turkey.xml.gz" x-tvg-url="http://epg.streamstv.me/epg/guide-turkey.xml.gz"
+#PLAYLIST:TR Sports Auto-Updated
+
+"""
+
+def _make_entry(name: str, group: str, logo: str, source_key: str,
+                channel_id: str, url: str) -> str:
+    """Tek bir M3U girişi oluştur."""
+    source_tag = SOURCES.get(source_key, f"#SOURCE:{source_key}")
+    return (
+        f'#EXTINF:-1 tvg-id="{channel_id}" tvg-name="{name}" '
+        f'tvg-logo="{logo}" group-title="{group}",{name}\n'
+        f'{source_tag}\n'
+        f'{url}\n'
+    )
 
 
-def load_channels_meta() -> Dict[str, dict]:
-    """channels.json'dan kanal metadata'sını yükler."""
-    if not CHANNELS_FILE.exists():
-        return {}
-    data = json.loads(CHANNELS_FILE.read_text(encoding="utf-8"))
-    return {ch["name"]: ch for ch in data}
+def load_m3u() -> str:
+    """M3U dosyasını oku. Yoksa boş header döndür."""
+    if M3U_FILE.exists():
+        return M3U_FILE.read_text(encoding="utf-8")
+    logger.info("playlist.m3u bulunamadı, sıfırdan oluşturuluyor.")
+    return M3U_HEADER
 
 
-def parse_m3u(content: str) -> Tuple[str, List[dict]]:
+def parse_entries(content: str) -> Dict[str, dict]:
     """
-    M3U içeriğini ayrıştırır.
-    Returns: (header_line, entries_list)
-    entries: [{"extinf": str, "source": str|None, "url": str, "raw_lines": list}]
+    M3U içeriğini parse et.
+    
+    Returns:
+        dict: {channel_id: {extinf, source_tag, url, raw_block}}
     """
-    lines  = content.splitlines()
-    header = lines[0] if lines and lines[0].startswith("#EXTM3U") else "#EXTM3U"
-    entries = []
-    i = 1
+    entries = {}
+    lines   = content.splitlines(keepends=True)
+    i       = 0
+
     while i < len(lines):
-        line = lines[i].strip()
-        if line.startswith("#EXTINF"):
-            entry = {"extinf": line, "source": None, "url": "", "extra": []}
-            i += 1
-            # #EXTVLCOPT veya #SOURCE satırlarını topla
-            while i < len(lines) and lines[i].startswith("#") and not lines[i].startswith("#EXTINF"):
-                meta = lines[i].strip()
-                if meta.startswith("#SOURCE:"):
-                    entry["source"] = meta.split(":", 1)[1].strip()
+        line = lines[i]
+
+        if line.startswith("#EXTINF:"):
+            block_start = i
+            extinf_line = line.strip()
+
+            # tvg-id çek
+            id_match = re.search(r'tvg-id="([^"]*)"', extinf_line)
+            cid      = id_match.group(1) if id_match else ""
+
+            source_tag = ""
+            url        = ""
+            j          = i + 1
+
+            while j < len(lines):
+                nxt = lines[j].strip()
+                if nxt.startswith("#SOURCE:"):
+                    source_tag = nxt
+                    j += 1
+                elif nxt and not nxt.startswith("#"):
+                    url = nxt
+                    j += 1
+                    break
+                elif nxt.startswith("#EXTINF:"):
+                    break
                 else:
-                    entry["extra"].append(meta)
-                i += 1
-            # URL satırı
-            if i < len(lines) and not lines[i].startswith("#"):
-                entry["url"] = lines[i].strip()
-                i += 1
-            entries.append(entry)
+                    j += 1
+
+            raw = "".join(lines[block_start:j])
+
+            if cid:
+                entries[cid] = {
+                    "extinf":     extinf_line,
+                    "source_tag": source_tag,
+                    "url":        url,
+                    "raw":        raw,
+                    "line_start": block_start,
+                }
+            i = j
         else:
             i += 1
-    return header, entries
+
+    return entries
 
 
-def extract_channel_name(extinf: str) -> str:
-    """#EXTINF satırından kanal adını çıkarır."""
-    m = re.search(r',(.+)$', extinf)
-    return m.group(1).strip() if m else ""
-
-
-def build_extinf(ch_meta: dict, domain: str) -> str:
-    """channels.json metadata'sından #EXTINF satırı üretir."""
-    name      = ch_meta.get("name", "Kanal")
-    tvg_id    = ch_meta.get("tvg_id", "")
-    tvg_name  = ch_meta.get("tvg_name", name)
-    logo      = ch_meta.get("logo", "")
-    group     = ch_meta.get("group", "Spor")
-
-    parts = ['-1']
-    if tvg_id:    parts.append(f'tvg-id="{tvg_id}"')
-    if tvg_name:  parts.append(f'tvg-name="{tvg_name}"')
-    if logo:      parts.append(f'tvg-logo="{logo}"')
-    if group:     parts.append(f'group-title="{group}"')
-
-    attrs = " ".join(parts)
-    return f"#EXTINF:{attrs},{name}"
-
-
-def update_m3u(
-    m3u_path: Path,
-    new_links: Dict[str, str],
-    domain: str = SOURCE_TAG
-) -> Tuple[int, int, int]:
+def update_m3u(new_links: Dict[str, dict], dry_run: bool = False) -> dict:
     """
-    M3U dosyasını akıllıca günceller.
+    M3U dosyasını akıllıca güncelle.
     
-    Args:
-        m3u_path: Güncellenecek .m3u dosyası
-        new_links: {kanal_adı: yeni_m3u8_url}
-        domain: Kaynak etiketi (8602741.xyz)
+    Kurallar:
+      - SOURCE etiketli kanallar → güncellenir
+      - SOURCE etiketi olmayan   → kesinlikle dokunulmaz
+      - Yeni kanal               → sona eklenir
+      - Değişmeyen URL           → olduğu gibi bırakılır
     
-    Returns: (güncellenen, eklenen, değişmeyen) sayıları
+    Returns:
+        dict: {added, updated, unchanged, skipped}
     """
-    channels_meta = load_channels_meta()
-    state = json.loads(STATE_FILE.read_text()) if STATE_FILE.exists() else {}
+    content  = load_m3u()
+    existing = parse_entries(content)
 
-    # Dosya yoksa oluştur
-    if not m3u_path.exists():
-        log.info(f"M3U dosyası yok, oluşturuluyor: {m3u_path}")
-        _create_fresh_m3u(m3u_path, new_links, channels_meta, domain)
-        return 0, len(new_links), 0
+    stats = {"added": 0, "updated": 0, "unchanged": 0, "skipped": 0}
+    managed_sources = set(SOURCES.values())
 
-    content = m3u_path.read_text(encoding="utf-8")
-    header, entries = parse_m3u(content)
+    # Header'ı koru
+    header_end = content.find("#EXTINF:")
+    header     = content[:header_end] if header_end > 0 else M3U_HEADER
 
-    updated  = 0
-    added    = 0
-    same     = 0
-    processed_names = set()
+    # Yeni içerik oluştur
+    new_content = header
 
-    # Mevcut girişleri güncelle
-    for entry in entries:
-        ch_name = extract_channel_name(entry["extinf"])
-        src     = entry.get("source")
+    # 1. Mevcut girişleri işle
+    processed_ids = set()
+    for cid, entry in existing.items():
+        is_managed = entry["source_tag"] in managed_sources
 
-        # Bu siteden değilse DOKUNMA
-        if src != domain:
-            processed_names.add(ch_name)
-            continue
+        if cid in new_links and is_managed:
+            new_data = new_links[cid]
+            new_url  = new_data["url"]
 
-        # Bu siteden ama yeni link yoksa (taramada bulunamadı) — olduğu gibi bırak
-        if ch_name not in new_links:
-            processed_names.add(ch_name)
-            same += 1
-            log.debug(f"[{ch_name}] Taramada bulunamadı, mevcut link korunuyor")
-            continue
-
-        new_url = new_links[ch_name]
-        if entry["url"] == new_url:
-            same += 1
-            log.debug(f"[{ch_name}] Değişmedi ✓")
+            if new_url == entry["url"]:
+                new_content += entry["raw"]
+                stats["unchanged"] += 1
+                logger.debug(f"  = Değişmedi: {new_data['name']}")
+            else:
+                # URL güncelle, EXTINF satırını koru
+                updated_block = (
+                    entry["extinf"] + "\n"
+                    + SOURCES.get(new_data["source"], entry["source_tag"]) + "\n"
+                    + new_url + "\n"
+                )
+                new_content += updated_block
+                stats["updated"] += 1
+                logger.info(f"  ↻ Güncellendi: {new_data['name']}")
+                logger.info(f"    Eski: {entry['url'][:60]}")
+                logger.info(f"    Yeni: {new_url[:60]}")
         else:
-            old_url = entry["url"]
-            entry["url"] = new_url
-            # EXTINF'i de güncelle (metadata değişmiş olabilir)
-            if ch_name in channels_meta:
-                entry["extinf"] = build_extinf(channels_meta[ch_name], domain)
-            updated += 1
-            log.info(f"[{ch_name}] 🔄 Güncellendi:\n    ESKİ: {old_url}\n    YENİ: {new_url}")
+            # Yönetilmeyen giriş → olduğu gibi bırak
+            new_content += entry["raw"]
+            if not is_managed:
+                stats["skipped"] += 1
 
-        processed_names.add(ch_name)
+        processed_ids.add(cid)
 
-    # Yeni kanalları ekle (M3U'da olmayan ama taramada bulunanlar)
-    for ch_name, new_url in new_links.items():
-        if ch_name in processed_names:
-            continue
-        meta    = channels_meta.get(ch_name, {"name": ch_name, "group": "Spor"})
-        extinf  = build_extinf(meta, domain)
-        entries.append({
-            "extinf": extinf,
-            "source": domain,
-            "url": new_url,
-            "extra": [],
-        })
-        added += 1
-        log.info(f"[{ch_name}] ➕ Yeni kanal eklendi: {new_url}")
+    # 2. Yeni kanalları ekle
+    for cid, data in new_links.items():
+        if cid not in processed_ids:
+            new_entry = _make_entry(
+                name=data["name"],
+                group=data["group"],
+                logo=data["logo"],
+                source_key=data["source"],
+                channel_id=cid,
+                url=data["url"],
+            )
+            new_content += new_entry
+            stats["added"] += 1
+            logger.info(f"  + Eklendi: {data['name']}")
 
-    # Dosyayı yeniden yaz
-    _write_m3u(m3u_path, header, entries, domain, state)
+    # 3. Timestamp güncelle
+    ts_comment = f"# Son güncelleme: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC\n"
+    if "# Son güncelleme:" in new_content:
+        new_content = re.sub(r"# Son güncelleme:.*\n", ts_comment, new_content)
+    else:
+        new_content = new_content.replace(M3U_HEADER.strip(), M3U_HEADER.strip() + "\n" + ts_comment)
 
-    log.info(f"📊 Sonuç → Güncellenen: {updated} | Eklenen: {added} | Değişmeyen: {same}")
-    return updated, added, same
+    if not dry_run:
+        M3U_FILE.write_text(new_content, encoding="utf-8")
+        logger.info(f"playlist.m3u yazıldı ({M3U_FILE.stat().st_size / 1024:.1f} KB)")
+    else:
+        logger.info("DRY RUN — dosyaya yazılmadı")
 
-
-def _write_m3u(path: Path, header: str, entries: List[dict], domain: str, state: dict):
-    """M3U dosyasını yazar."""
-    now     = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-    cur_dom = state.get("current_domain", domain)
-    lines   = [
-        header,
-        f"# Güncellenme: {now}",
-        f"# Aktif Domain: {cur_dom}",
-        f"# Kaynak: https://{cur_dom}/event.html?id=",
-        "",
-    ]
-    for entry in entries:
-        lines.append(entry["extinf"])
-        for ex in entry.get("extra", []):
-            lines.append(ex)
-        if entry.get("source"):
-            lines.append(f"#SOURCE:{entry['source']}")
-        lines.append(entry["url"])
-        lines.append("")
-
-    path.write_text("\n".join(lines), encoding="utf-8")
-    log.info(f"💾 M3U yazıldı: {path} ({len(entries)} kanal)")
-
-
-def _create_fresh_m3u(path: Path, links: Dict[str, str], meta: dict, domain: str):
-    """Sıfırdan M3U dosyası oluşturur."""
-    state = json.loads(STATE_FILE.read_text()) if STATE_FILE.exists() else {}
-    entries = []
-    for name, url in links.items():
-        ch_meta = meta.get(name, {"name": name, "group": "Spor"})
-        entries.append({
-            "extinf": build_extinf(ch_meta, domain),
-            "source": domain,
-            "url": url,
-            "extra": [],
-        })
-    header = ('#EXTM3U x-tvg-url="' + EPG_URL + '" x-tvg-url-backup="' + EPG_BACKUP + '"')
-    _write_m3u(path, header, entries, domain, state)
+    logger.info(
+        f"Sonuç → Eklenen: {stats['added']} | "
+        f"Güncellenen: {stats['updated']} | "
+        f"Değişmeyen: {stats['unchanged']} | "
+        f"Atlanılan: {stats['skipped']}"
+    )
+    return stats
