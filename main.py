@@ -1,85 +1,80 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-main.py
-Ana giriş noktası. Scraper + Updater'ı çalıştırır.
+main.py — IPTV M3U8 Scraper & Updater
+Kullanım:
+  python main.py                              # tüm kanallar
+  python main.py --channel "BeIN Sports 1 HD" # tek kanal
+  python main.py --dry-run                    # yazmadan göster
+  python main.py --no-selenium                # sadece requests
+  python main.py --m3u /path/to/list.m3u      # özel dosya
 """
 
-import os
 import sys
-import logging
 import argparse
-from scraper import scrape_all_channels, CHANNEL_SLUGS
-from updater import update_m3u, M3U_FILE
+import logging
+from scraper import scrape_all, scrape_channel, CHANNELS, make_session, make_driver, SELENIUM_OK
+from updater import update_playlist, DEFAULT_M3U_FILE
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
-    datefmt="%H:%M:%S",
     handlers=[
         logging.StreamHandler(sys.stdout),
-        logging.FileHandler("update.log", encoding="utf-8"),
+        logging.FileHandler("scraper.log", encoding="utf-8"),
     ]
 )
-log = logging.getLogger("main")
-
 
 def parse_args():
-    p = argparse.ArgumentParser(description="iNat TV M3U Güncelleyici")
-    p.add_argument("--m3u", default=M3U_FILE,
-                   help="Güncellenecek M3U dosya yolu (varsayılan: playlist.m3u)")
-    p.add_argument("--dry-run", action="store_true",
-                   help="Dosyayı yazmadan sadece sonuçları göster")
-    p.add_argument("--channel", metavar="NAME",
-                   help="Tek bir kanalı güncelle (test için)")
+    p = argparse.ArgumentParser(description="IPTV M3U8 Scraper — netspor.tecostream.xyz")
+    p.add_argument("--channel",     default=None,
+                   help="Tek kanal adı (örn: 'BeIN Sports 1 HD')")
+    p.add_argument("--m3u",        default=DEFAULT_M3U_FILE,
+                   help=f"M3U dosya yolu (varsayılan: {DEFAULT_M3U_FILE})")
+    p.add_argument("--dry-run",    action="store_true",
+                   help="Dosyaya yazmadan sadece önizle")
+    p.add_argument("--no-selenium",action="store_true",
+                   help="Selenium kullanma (sadece requests)")
     return p.parse_args()
-
 
 def main():
     args = parse_args()
-    log.info("=" * 55)
-    log.info("  iNat TV M3U Güncelleyici başlatıldı")
-    log.info("=" * 55)
+    use_sel = (not args.no_selenium) and SELENIUM_OK
 
-    # ── Tek kanal modu ──
     if args.channel:
-        from scraper import scrape_channel
-        match = [
-            (n, s, g) for n, s, g in CHANNEL_SLUGS
-            if args.channel.lower() in n.lower()
-        ]
-        if not match:
-            log.error(f"'{args.channel}' isimli kanal bulunamadı.")
+        # Tek kanal modu
+        target = None
+        for ch in CHANNELS:
+            if ch.name.lower() == args.channel.lower():
+                target = ch; break
+        if not target:
+            print(f"Hata: '{args.channel}' kanalı bulunamadı.")
+            print("Geçerli kanallar:")
+            for c in CHANNELS:
+                print(f"  - {c.name}")
             sys.exit(1)
-        channels = [scrape_channel(*m) for m in match]
-        channels = [c for c in channels if c]
+
+        session = make_session()
+        driver  = make_driver() if use_sel else None
+        try:
+            link = scrape_channel(target, session, driver)
+            if link:
+                print(f"✓ {target.name}: {link}")
+                new_links = {target.name: link}
+                update_playlist(new_links, args.m3u, args.dry_run)
+            else:
+                print(f"✗ {target.name}: link bulunamadı")
+        finally:
+            if driver: driver.quit()
+            session.close()
     else:
-        # ── Tüm kanallar ──
-        channels = scrape_all_channels()
-
-    if not channels:
-        log.error("Hiç kanal bulunamadı! Çıkılıyor.")
-        sys.exit(1)
-
-    log.info(f"Bulunan kanal sayısı: {len(channels)}")
-    for ch in channels:
-        log.info(f"  📺 {ch['name']:25s}  {ch['url'][:55]}...")
-
-    if args.dry_run:
-        log.info("[DRY RUN] Dosya yazılmadı.")
-        return
-
-    # ── M3U'yu güncelle ──
-    stats = update_m3u(channels, m3u_path=args.m3u)
-
-    log.info("─" * 55)
-    log.info(f"  ➕ Eklenen  : {stats['added']}")
-    log.info(f"  🔄 Güncellenen: {stats['updated']}")
-    log.info(f"  ✅ Değişmez : {stats['unchanged']}")
-    log.info(f"  ⚠️ Bulunamayan: {stats['not_found']}")
-    log.info("=" * 55)
-    log.info("  Güncelleme tamamlandı ✅")
-    log.info("=" * 55)
-
+        # Tüm kanallar
+        new_links = scrape_all(use_selenium=use_sel)
+        if new_links:
+            update_playlist(new_links, args.m3u, args.dry_run)
+        else:
+            print("Hiç m3u8 linki bulunamadı! Site erişilemez olabilir.")
+            sys.exit(1)
 
 if __name__ == "__main__":
     main()
