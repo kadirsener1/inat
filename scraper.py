@@ -49,7 +49,7 @@ class Channel:
 
 CHANNELS: List[Channel] = [
     # BeIN Sports
-    Channel("BeIN Sports 1 HD",  "bein-sports-1",   "Spor", "https://i.ibb.co/bRqf3s1/bein1.png",   "BeIN Sports 1",   ["/kanal/bein-sports-1", "/bein1", "/bein-1"]),
+    Channel("BeIN Sports 1 HD",  "bein-sports-1",   "Spor", "https://i.ibb.co/bRqf3s1/bein1.png",   "BeIN Sports 1",   ["/kanal/bein-sports-1", "/bs1", "/bein-1"]),
     Channel("BeIN Sports 2 HD",  "bein-sports-2",   "Spor", "https://i.ibb.co/bRqf3s1/bein2.png",   "BeIN Sports 2",   ["/kanal/bein-sports-2", "/bein2", "/bein-2"]),
     Channel("BeIN Sports 3 HD",  "bein-sports-3",   "Spor", "https://i.ibb.co/bRqf3s1/bein3.png",   "BeIN Sports 3",   ["/kanal/bein-sports-3", "/bein3"]),
     Channel("BeIN Sports 4 HD",  "bein-sports-4",   "Spor", "https://i.ibb.co/bRqf3s1/bein4.png",   "BeIN Sports 4",   ["/kanal/bein-sports-4", "/bein4"]),
