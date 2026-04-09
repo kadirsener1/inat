@@ -1,175 +1,192 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-updater.py
-M3U dosyasını akıllıca güncelleyen modül.
-
-Kurallar:
-  - SOURCE_TAG (#SOURCE:inattv1289.xyz) ile işaretli girişler güncellenir.
-  - Diğer kaynaktan gelen girişlere HİÇ dokunulmaz.
-  - Yeni kanal varsa eklenir, bulunamayan eski kanal M3U'da kalır ama
-    işaretlenerek uyarı verilir.
+updater.py — M3U Akıllı Güncelleyici
+Yalnızca netspor.tecostream.xyz kaynaklı linkleri değiştirir.
 """
 
 import os
 import re
 import logging
 from datetime import datetime, timezone
-from typing import List, Dict
-
-SOURCE_TAG = "#SOURCE:inattv1289.xyz"
-M3U_FILE   = "playlist.m3u"
+from typing import Dict, List, Tuple
+from scraper import CHANNELS, SOURCE_TAG, Channel
 
 log = logging.getLogger("updater")
 
+SOURCE_MARKER    = f"#SOURCE:{SOURCE_TAG}"
+DEFAULT_M3U_FILE = "playlist.m3u"
 
-class M3UEntry:
-    """Tek bir M3U kanal girişini temsil eder."""
-    def __init__(self, extinf: str, url: str, source_tag: str = "",
-                 extra_lines: List[str] = None):
-        self.extinf     = extinf
-        self.url        = url
-        self.source_tag = source_tag
-        self.extra      = extra_lines or []
+EPG_URL = "https://epg.pw/xmltv.xml.gz"  # genel Türk EPG
 
-    @property
-    def is_from_inattv(self) -> bool:
-        return SOURCE_TAG in self.source_tag
-
-    @property
-    def channel_name(self) -> str:
-        m = re.search(r',(.+)$', self.extinf)
-        return m.group(1).strip() if m else ""
-
-    def to_text(self) -> str:
-        lines = [self.extinf]
-        if self.source_tag:
-            lines.append(self.source_tag)
-        lines.extend(self.extra)
-        lines.append(self.url)
-        return "\n".join(lines)
-
-
-def parse_m3u(content: str) -> tuple[str, List[M3UEntry]]:
-    """M3U metnini ayrıştırır. (header, [entry, ...]) döndürür."""
-    lines = content.splitlines()
-    header = lines[0] if lines else "#EXTM3U"
-    entries: List[M3UEntry] = []
-    i = 1
-    while i < len(lines):
-        line = lines[i].strip()
-        if line.startswith("#EXTINF"):
-            extinf = line
-            source_tag = ""
-            extra = []
-            i += 1
-            while i < len(lines):
-                nxt = lines[i].strip()
-                if nxt.startswith(SOURCE_TAG):
-                    source_tag = nxt
-                    i += 1
-                elif nxt.startswith("#") and not nxt.startswith("#EXTINF"):
-                    extra.append(nxt)
-                    i += 1
-                elif nxt.startswith("http") or nxt.startswith("rtmp"):
-                    entries.append(M3UEntry(extinf, nxt, source_tag, extra))
-                    i += 1
-                    break
-                else:
-                    i += 1
-        else:
-            i += 1
-    return header, entries
-
-
-def build_extinf(ch: Dict) -> str:
-    """Yeni bir #EXTINF satırı oluşturur."""
-    name  = ch["name"]
-    group = ch.get("group", "Sports")
-    slug  = ch.get("slug", "")
-    logo  = ch.get("logo", "")
-    logo_attr = f' tvg-logo="{logo}"' if logo else ""
+# ── M3U Header ──────────────────────────────────────────────
+def m3u_header() -> str:
+    ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
     return (
-        f'#EXTINF:-1 tvg-id="{slug}" tvg-name="{name}"'
-        f'{logo_attr} group-title="{group}",{name}'
+        f'#EXTM3U url-tvg="{EPG_URL}" tvg-shift="+3" '
+        f'x-tvg-url="{EPG_URL}" '
+        f'refresh="3600"\n'
+        f'# Otomatik güncellendi: {ts}\n'
+        f'# Kaynak: {SOURCE_TAG}\n'
     )
 
+# ── Kanal için EXTINF satırı ─────────────────────────────────
+def build_extinf(ch: Channel, url: str) -> str:
+    return (
+        f'{SOURCE_MARKER}\n'
+        f'#EXTINF:-1 tvg-id="{ch.tvg_id or ch.name}" '
+        f'tvg-name="{ch.name}" '
+        f'tvg-logo="{ch.logo}" '
+        f'group-title="{ch.group}",'
+        f'{ch.name}\n'
+        f'{url}\n'
+    )
 
-def update_m3u(channels: List[Dict], m3u_path: str = M3U_FILE) -> Dict:
-    """
-    M3U dosyasını günceller.
-    - Dosya yoksa sıfırdan oluşturur.
-    - Sadece SOURCE_TAG ile işaretli girişleri günceller.
-    - Diğer girişlere dokunmaz.
-    Geri döner: {added, updated, unchanged, not_found}
-    """
-    stats = {"added": 0, "updated": 0, "unchanged": 0, "not_found": 0}
+# ── M3U dosyasını parse et ──────────────────────────────────
+class M3UEntry:
+    def __init__(self, raw_lines: List[str], is_source: bool = False):
+        self.raw_lines  = raw_lines
+        self.is_source  = is_source   # bu site'den mi?
+        self.channel_name = ""
+        self._parse()
 
-    # ── Mevcut dosyayı oku ──
-    if os.path.exists(m3u_path):
-        with open(m3u_path, "r", encoding="utf-8") as f:
-            content = f.read()
-        header, entries = parse_m3u(content)
-    else:
-        now = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-        header = (
-            f'#EXTM3U x-tvg-url="" '
-            f'url-tvg="https://www.epgshares.com/epg_tr.xml.gz"\n'
-            f'# Oluşturulma: {now}\n'
-            f'# Bu dosya otomatik güncellenir - inattv1289.xyz kaynaklı\n'
-            f'# bölüm dışındaki kanallar korunur.'
-        )
-        entries = []
+    def _parse(self):
+        for line in self.raw_lines:
+            m = re.search(r'tvg-name="([^"]+)"', line)
+            if m:
+                self.channel_name = m.group(1)
+                break
+            m2 = re.match(r'#EXTINF.*,(.+)$', line)
+            if m2:
+                self.channel_name = m2.group(1).strip()
 
-    # ── Scraped kanalları isme göre indeksle ──
-    scraped_map: Dict[str, Dict] = {ch["name"].lower(): ch for ch in channels}
-    processed_names = set()
+    def render(self) -> str:
+        return "\n".join(self.raw_lines) + "\n"
 
-    # ── Mevcut girişleri güncelle ──
-    for entry in entries:
-        key = entry.channel_name.lower()
-        if entry.is_from_inattv and key in scraped_map:
-            ch = scraped_map[key]
-            new_url = ch["url"]
-            if entry.url != new_url:
-                log.info(f"  🔄 Güncellendi: {entry.channel_name}")
-                entry.url    = new_url
-                entry.extinf = build_extinf(ch)
-                entry.source_tag = SOURCE_TAG
-                stats["updated"] += 1
+def parse_m3u(path: str) -> Tuple[str, List[M3UEntry]]:
+    if not os.path.exists(path):
+        return m3u_header(), []
+
+    with open(path, "r", encoding="utf-8") as f:
+        lines = f.read().splitlines()
+
+    header_lines = []
+    entries: List[M3UEntry] = []
+    i = 0
+
+    # header topla
+    while i < len(lines) and not lines[i].startswith("#EXTINF") and not lines[i].startswith(SOURCE_MARKER):
+        header_lines.append(lines[i])
+        i += 1
+
+    while i < len(lines):
+        chunk = []
+        is_src = False
+
+        if lines[i].startswith(SOURCE_MARKER):
+            is_src = True
+            chunk.append(lines[i])
+            i += 1
+
+        while i < len(lines) and lines[i].startswith("#"):
+            chunk.append(lines[i]); i += 1
+
+        if i < len(lines) and not lines[i].startswith("#") and lines[i].strip():
+            chunk.append(lines[i]); i += 1
+
+        if chunk:
+            entries.append(M3UEntry(chunk, is_src))
+
+    header = "\n".join(header_lines)
+    if not header.startswith("#EXTM3U"):
+        header = m3u_header()
+    return header, entries
+
+# ── Kanal adı normalize ─────────────────────────────────────
+def normalize(name: str) -> str:
+    return re.sub(r'\s+', ' ', name.lower().strip()
+               .replace("ı","i").replace("ğ","g").replace("ş","s")
+               .replace("ç","c").replace("ö","o").replace("ü","u"))
+
+# ── Ana güncelleme fonksiyonu ────────────────────────────────
+def update_playlist(
+    new_links: Dict[str, str],
+    m3u_path: str = DEFAULT_M3U_FILE,
+    dry_run: bool = False
+) -> Dict[str, int]:
+    if not new_links:
+        log.warning("Yeni link bulunamadı, güncelleme atlandı.")
+        return {"added":0, "updated":0, "unchanged":0, "kept":0}
+
+    header, entries = parse_m3u(m3u_path)
+
+    # Bu siteden olmayan girişleri koru
+    other_entries = [e for e in entries if not e.is_source]
+    source_entries= [e for e in entries if     e.is_source]
+
+    # Mevcut kaynak girişlerini ada göre map et
+    existing_map: Dict[str, M3UEntry] = {}
+    for e in source_entries:
+        existing_map[normalize(e.channel_name)] = e
+
+    # Kanal kataloğunu ada göre map et
+    ch_map: Dict[str, Channel] = {normalize(c.name): c for c in CHANNELS}
+
+    stats = {"added":0, "updated":0, "unchanged":0, "kept": len(other_entries)}
+    new_source_blocks: List[str] = []
+
+    for ch in CHANNELS:
+        key    = normalize(ch.name)
+        new_url= new_links.get(ch.name)
+
+        if not new_url:
+            # Yeni link yoksa var olanı koru
+            if key in existing_map:
+                new_source_blocks.append(existing_map[key].render())
+                log.info(f"  KORUNDU  | {ch.name}")
             else:
-                log.info(f"  ✅ Değişmedi: {entry.channel_name}")
+                log.warning(f"  ATLANDI  | {ch.name} (link yok)")
+            continue
+
+        if key in existing_map:
+            old_lines = existing_map[key].raw_lines
+            old_url   = old_lines[-1].strip()
+            if old_url == new_url:
+                new_source_blocks.append(existing_map[key].render())
                 stats["unchanged"] += 1
-            processed_names.add(key)
-        elif entry.is_from_inattv and key not in scraped_map:
-            log.warning(f"  ⚠️ Sitede bulunamadı (korunuyor): {entry.channel_name}")
-            stats["not_found"] += 1
-
-    # ── Yeni kanalları ekle ──
-    for ch in channels:
-        if ch["name"].lower() not in processed_names:
-            log.info(f"  ➕ Eklendi: {ch['name']}")
-            entries.append(M3UEntry(
-                extinf=build_extinf(ch),
-                url=ch["url"],
-                source_tag=SOURCE_TAG
-            ))
+                log.info(f"  AYNI     | {ch.name}")
+            else:
+                new_source_blocks.append(build_extinf(ch, new_url))
+                stats["updated"] += 1
+                log.info(f"  GÜNCELLENDİ | {ch.name}")
+                log.info(f"    ESKİ: {old_url}")
+                log.info(f"    YENİ: {new_url}")
+        else:
+            new_source_blocks.append(build_extinf(ch, new_url))
             stats["added"] += 1
+            log.info(f"  EKLENDİ  | {ch.name} → {new_url}")
 
-    # ── Dosyayı yaz ──
-    now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-    out_lines = [
-        header,
-        f"# Son güncelleme: {now_str}",
-        ""
-    ]
-    for e in entries:
-        out_lines.append(e.to_text())
-        out_lines.append("")
+    # Dosya oluştur
+    output_parts = [header.rstrip("\n") + "\n"]
+    output_parts += ["# ── Diğer kaynaklar ──────────────────────────────\n"]
+    output_parts += [e.render() for e in other_entries]
+    output_parts += [f"\n# ── {SOURCE_TAG} (otomatik) ─────────────────\n"]
+    output_parts += new_source_blocks
 
-    with open(m3u_path, "w", encoding="utf-8", newline="\n") as f:
-        f.write("\n".join(out_lines))
+    content = "".join(output_parts)
 
-    log.info(f"📄 {m3u_path} yazıldı — "
-             f"Eklenen:{stats['added']} Güncellenen:{stats['updated']} "
-             f"Değişmez:{stats['unchanged']} Bulunamayan:{stats['not_found']}")
+    if not dry_run:
+        with open(m3u_path, "w", encoding="utf-8", newline="\n") as f:
+            f.write(content)
+        log.info(f"Yazıldı → {m3u_path}")
+    else:
+        log.info("[DRY-RUN] — Dosyaya yazılmadı.")
+        print(content)
+
+    log.info(
+        f"Özet: +{stats['added']} eklendi | "
+        f"~{stats['updated']} güncellendi | "
+        f"={stats['unchanged']} değişmedi | "
+        f"{stats['kept']} başka kaynak korundu"
+    )
     return stats
