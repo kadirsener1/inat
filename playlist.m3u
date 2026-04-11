@@ -1,9 +1,4 @@
-#EXTM3U x-tvg-url="https://epg.pw/xmltv.xml.gz"
-# Güncellenme: 2025-01-15 06:00 UTC
-# Aktif Domain: 8602741.xyz
-# Kaynak: https://8602741.xyz/event.html?id=
-
-
+#EXTM3U
 #EXTINF:-1 tvg-id="androstreamlivebs1" tvg-name="BeIN Sports 1 HD" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/Bein_sports_1.png/220px-Bein_sports_1.png" group-title="Spor",BeIN Sports 1 HD
 #SOURCE:8602741.xyz
 https://andro.evrenosoglu53.lat/checklist/receptestt.m3u8
