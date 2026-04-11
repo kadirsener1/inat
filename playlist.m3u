@@ -1,67 +1,67 @@
 #EXTM3U
 #EXTINF:-1 tvg-id="androstreamlivebs1" tvg-name="BeIN Sports 1 HD" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/Bein_sports_1.png/220px-Bein_sports_1.png" group-title="Spor",BeIN Sports 1 HD
-#SOURCE:8602741.xyz
+
 https://andro.evrenosoglu53.lat/checklist/receptestt.m3u8
 #EXTINF:-1 tvg-id="androstreamlivebs2" tvg-name="BeIN Sports 2 HD" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/Bein_sports_2.png/220px-Bein_sports_2.png" group-title="Spor",BeIN Sports 2 HD
-#SOURCE:8602741.xyz
+
 https://andro.evrenosoglu53.lat/checklist/facebooklivebs2.m3u8
 #EXTINF:-1 tvg-id="androstreamlivebs3" tvg-name="BeIN Sports 3 HD" tvg-logo="" group-title="Spor",BeIN Sports 3 HD
-#SOURCE:8602741.xyz
+
 https://andro.evrenosoglu53.lat/checklist/facebooklivebs3.m3u8
 #EXTINF:-1 tvg-id="androstreamlivebs4" tvg-name="BeIN Sports 4 HD" tvg-logo="" group-title="Spor",BeIN Sports 4 HD
-#SOURCE:8602741.xyz
+
 https://andro.evrenosoglu53.lat/checklist/facebooklivebs4.m3u8
 #EXTINF:-1 tvg-id="androstreamlivegs" tvg-name="GS TV" tvg-logo="" group-title="Spor",GS TV
-#SOURCE:8602741.xyz
+
 https://andro.evrenosoglu53.lat/checklist/facebooklivegs.m3u8
 #EXTINF:-1 tvg-id="androstreamlivefb" tvg-name="FB TV" tvg-logo="" group-title="Spor",FB TV
-#SOURCE:8602741.xyz
+
 https://andro.evrenosoglu53.lat/checklist/facebooklivefb.m3u8
 #EXTINF:-1 tvg-id="androstreamlivenba" tvg-name="NBA TV" tvg-logo="" group-title="Spor",NBA TV
-#SOURCE:8602741.xyz
+
 https://andro.evrenosoglu53.lat/checklist/facebooklivenba.m3u8
 #EXTINF:-1 tvg-id="androstreamlivebsm1" tvg-name="BeIN Sports Max 1" tvg-logo="" group-title="Spor",BeIN Sports Max 1
-#SOURCE:8602741.xyz
+
 https://andro.evrenosoglu53.lat/checklist/facebooklivebsm1.m3u8
 #EXTINF:-1 tvg-id="androstreamlivebsm2" tvg-name="BeIN Sports Max 2" tvg-logo="" group-title="Spor",BeIN Sports Max 2
-#SOURCE:8602741.xyz
+
 https://andro.evrenosoglu53.lat/checklist/facebooklivebsm2.m3u8
 #EXTINF:-1 tvg-id="androstreamlivess1" tvg-name="S Sport HD" tvg-logo="https://upload.wikimedia.org/wikipedia/tr/4/49/S_Sport_logo.png" group-title="Spor",S Sport HD
-#SOURCE:8602741.xyz
+
 https://andro.evrenosoglu53.lat/checklist/facebooklivess1.m3u8
 #EXTINF:-1 tvg-id="androstreamlivess2" tvg-name="S Sport 2 HD" tvg-logo="" group-title="Spor",S Sport 2 HD
-#SOURCE:8602741.xyz
+
 https://andro.evrenosoglu53.lat/checklist/facebooklivess2.m3u8
 #EXTINF:-1 tvg-id="androstreamlivessplus1" tvg-name="S Sport Plus" tvg-logo="" group-title="Spor",S Sport Plus
-#SOURCE:8602741.xyz
+
 https://andro.evrenosoglu53.lat/checklist/facebooklivessplus1.m3u8
 #EXTINF:-1 tvg-id="androstreamlivets" tvg-name="Tivibu Spor HD" tvg-logo="" group-title="Spor",Tivibu Spor HD
-#SOURCE:8602741.xyz
+
 https://andro.evrenosoglu53.lat/checklist/facebooklivets.m3u8
 #EXTINF:-1 tvg-id="androstreamlivets2" tvg-name="Tivibu Spor 2" tvg-logo="" group-title="Spor",Tivibu Spor 2
-#SOURCE:8602741.xyz
+
 https://andro.evrenosoglu53.lat/checklist/facebooklivets2.m3u8
 #EXTINF:-1 tvg-id="androstreamlivets3" tvg-name="Tivibu Spor 3" tvg-logo="" group-title="Spor",Tivibu Spor 3
-#SOURCE:8602741.xyz
+
 https://andro.evrenosoglu53.lat/checklist/facebooklivets3.m3u8
 #EXTINF:-1 tvg-id="androstreamlivets4" tvg-name="Tivibu Spor 4" tvg-logo="" group-title="Spor",Tivibu Spor 4
-#SOURCE:8602741.xyz
+
 https://andro.evrenosoglu53.lat/checklist/facebooklivets4.m3u8
 #EXTINF:-1 tvg-id="androstreamlivesm1" tvg-name="Smart Spor HD" tvg-logo="" group-title="Spor",Smart Spor HD
-#SOURCE:8602741.xyz
+
 https://andro.evrenosoglu53.lat/checklist/facebooklivesm1.m3u8
 #EXTINF:-1 tvg-id="androstreamlivesm2" tvg-name="Smart Spor 2 HD" tvg-logo="" group-title="Spor",Smart Spor 2 HD
-#SOURCE:8602741.xyz
+
 https://andro.evrenosoglu53.lat/checklist/facebooklivesm2.m3u8
 #EXTINF:-1 tvg-id="androstreamlivees1" tvg-name="Eurosport 1 HD" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/6/6c/Eurosport_1_logo_2015.svg/220px-Eurosport_1_logo_2015.svg.png" group-title="Spor",Eurosport 1 HD
-#SOURCE:8602741.xyz
+
 https://andro.evrenosoglu53.lat/checklist/facebooklivees1.m3u8
 #EXTINF:-1 tvg-id="androstreamlivees2" tvg-name="Eurosport 2 HD" tvg-logo="" group-title="Spor",Eurosport 2 HD
-#SOURCE:8602741.xyz
+
 https://andro.evrenosoglu53.lat/checklist/facebooklivees2.m3u8
 #EXTINF:-1 tvg-id="androstreamlivetrts" tvg-name="TRT Spor HD" tvg-logo="https://upload.wikimedia.org/wikipedia/tr/thumb/f/f8/TRT_Spor_logo_%282022%29.svg/220px-TRT_Spor_logo_%282022%29.svg.png" group-title="Spor",TRT Spor HD
-#SOURCE:8602741.xyz
+
 https://andro.evrenosoglu53.lat/checklist/facebooklivetrts.m3u8
 #EXTINF:-1 tvg-id="androstreamlivetrtsy" tvg-name="TRT Spor Yıldız" tvg-logo="" group-title="Spor",TRT Spor Yıldız
-#SOURCE:8602741.xyz
+
 https://andro.evrenosoglu53.lat/checklist/facebooklivetrtsy.m3u8
