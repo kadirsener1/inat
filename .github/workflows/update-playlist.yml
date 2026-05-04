@@ -39,7 +39,7 @@ jobs:
       - name: 🚀 Playlist'i güncelle
         run: |
           if [ -n "${{ github.event.inputs.channel }}" ]; then
-            python scraper.py --channel "${{ github.event.inputs.channel }}"
+            python main.py --channel "${{ github.event.inputs.channel }}"
           else
             python scraper.py
           fi
