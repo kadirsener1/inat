@@ -41,7 +41,7 @@ jobs:
           if [ -n "${{ github.event.inputs.channel }}" ]; then
             python main.py --channel "${{ github.event.inputs.channel }}"
           else
-            python scraper.py
+            python main.py
           fi
         env:
           PYTHONUNBUFFERED: '1'
